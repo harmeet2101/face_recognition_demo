@@ -17,22 +17,39 @@ enum GeofenceEvent {
 }
 
 class GeoFenceModel {
-  static StreamSubscription<Position>? _positionStream;
+  StreamSubscription<Position>? _positionStream;
 
-  static Stream<GeofenceResult>? _geoStream;
+  late Stream<GeofenceResult>? _geoStream;
 
-  static Stream<GeofenceResult>? get geoStream => _geoStream;
+  late StreamSubscription<GeofenceResult?> _geoStreamSubc;
 
-  static final StreamController<GeofenceResult> _geoStreamController =
-      StreamController<GeofenceResult>();
+  set geoStreamSubc(StreamSubscription<GeofenceResult?> value) {
+    _geoStreamSubc = value;
+  }
 
-  static startGeofence(
+  Stream<GeofenceResult>? get geoStream => _geoStream;
+
+  late StreamController<GeofenceResult> _geoStreamController;
+
+  GeoFenceModel() {
+    //  init();
+  }
+
+  init() {
+    _geoStreamController = StreamController();
+    _geoStream = _geoStreamController.stream;
+  }
+
+  startGeofence(
       {required double pointedLatitude,
       required double pointedLongitude,
       required double radius,
       required int eventPeriodInSecs}) async {
+    init();
+
     if (_positionStream == null) {
-      _geoStream = _geoStreamController.stream;
+      print('position stream $_geoStreamController');
+
       _positionStream = Geolocator.getPositionStream(
               locationSettings:
                   const LocationSettings(accuracy: LocationAccuracy.best))
@@ -66,10 +83,12 @@ class GeoFenceModel {
     }
   }
 
-  static stopGeofence() {
+  stopGeofence() async {
     if (_positionStream != null) {
-      _positionStream!.cancel();
+      await _positionStream?.cancel();
+      await _geoStreamController.close();
+      await _geoStreamSubc.cancel();
+      _positionStream = null;
     }
-   //  _geoStreamController.close();
   }
 }

@@ -1,6 +1,5 @@
 import 'package:face_recognition_demo/model/User.dart';
 import 'package:face_recognition_demo/model/user_attendance.dart';
-import 'package:face_recognition_demo/servicies/ml_service.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
@@ -9,7 +8,7 @@ import 'package:sqflite/sqlite_api.dart';
 
 class DatebaseHelper {
   final String _dbName = 'ml.db';
-  final int _dbVersion = 1;
+  final int _dbVersion = 3;
 
   final String _dbUsersTable = 'users';
   final String _dbColumnUserId = 'userId';
@@ -47,7 +46,7 @@ class DatebaseHelper {
       createTables(db);
     }, onConfigure: (Database db) {
       db.execute('PRAGMA foreign_keys = ON');
-    });
+    }, onUpgrade: (Database db, int oldVer, int newVer) {});
     return _database;
   }
 
@@ -82,8 +81,8 @@ class DatebaseHelper {
     List<Map<String, dynamic>> rawList = await _database.query(
         _dbAttendanceTable,
         where:
-            '$_dbColumnCheckInStatus=? and $_dbColumnCheckOutStatus=? and $_dbColumnClockInDate=?',
-        whereArgs: [1, 0, formattedDate]);
+            '$_dbColumnCheckInStatus=? and $_dbColumnCheckOutStatus=? and $_dbColumnClockInDate=? and $_dbColumnUserId=?',
+        whereArgs: [1, 0, formattedDate, attendance.userId]);
 
     final formattedTime =
         DateFormat('hh:mm:ss a').format(currentDateTime); //hh:mm:ss a
@@ -133,8 +132,36 @@ class DatebaseHelper {
     final status = UserAttendance.fromJson(res.lastWhere(
         (element) => element[_dbColumnCheckOutStatus] == 0,
         orElse: () => {}));
-    print('Atendance $status');
     return status.attendanceId == null ? 0 : 1;
+  }
+
+  Future<UserAttendance?> getUserAttendance2(String? userId) async {
+    if (userId == null) return null;
+
+    final res = await _database.query(
+      _dbAttendanceTable,
+      where: 'check_out_status =? and '
+          'check_in_status =? and userId =?',
+      whereArgs: [0, 1, userId],
+    );
+
+    return UserAttendance.fromJson(res.lastWhere(
+        (element) => element[_dbColumnCheckOutStatus] == 0,
+        orElse: () => {}));
+  }
+
+  Future<List<UserAttendance>?> getUserWholeAttendance(String? userId) async {
+    if (userId == null) return null;
+
+    final res = await _database.query(
+      _dbAttendanceTable,
+      where: 'userId =?',
+      whereArgs: [userId],
+    );
+
+    return res
+        .map((attendance) => UserAttendance.fromJson(attendance))
+        .toList();
   }
 
   Future<User?> getUser(String userId) async {

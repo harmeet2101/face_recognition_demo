@@ -26,22 +26,7 @@ class User {
       this.userModel,
       this.dept});
 
-  /* static Map<String, dynamic> userToMap(User user) => {
-        'username': user.username ?? '',
-        'password': user.password ?? '',
-        'email':user.email??'',
-        'dept':user.dept?? '',
-        'userModel': jsonEncode(user.userModel)
-      };
 
-  static User fromMap(Map<String, dynamic> map) => User(
-        userId: map['userId'],
-        username: map['username'],
-        password: map['password'],
-        email: map['email'],
-        dept: map['dept'],
-        userModel: jsonDecode(map['userModel'])
-      );*/
 
   // Add this factory method to create an instance from a JSON map
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);

@@ -8,7 +8,10 @@ import 'package:face_recognition_demo/ui/home/home_screen.dart';
 import 'package:flutter/material.dart';
 
 import 'package:face_recognition_demo/servicies/database_helper.dart';
+import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
+
+const labelStyle = TextStyle(color: Colors.blue);
 
 class RegisterFormWidget extends StatefulWidget {
   const RegisterFormWidget({Key? key, required this.picture}) : super(key: key);
@@ -56,12 +59,18 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
                 child: Column(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 20.0),
-                      child: Image.file(
-                        File(widget.picture.path),
-                        fit: BoxFit.fill,
-                        width: 150,
-                        height: 150,
+                      padding: const EdgeInsets.symmetric(vertical: 40.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.rectangle,
+                          border: Border.all(color: Colors.black54, width: 0.5),
+                        ),
+                        child: Image.file(
+                          File(widget.picture.path),
+                          fit: BoxFit.fill,
+                          width: 170,
+                          height: 170,
+                        ),
                       ),
                     ),
                     const SizedBox(
@@ -70,42 +79,17 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20.0),
                       child: TextFormField(
-                        decoration: const InputDecoration(hintText: 'Username'),
+                        decoration: const InputDecoration(
+                          hintText: 'Enter Name',
+                        ),
                         controller: _nametextEditingController,
                         keyboardType: TextInputType.text,
                         focusNode: _nameTextFocusNode,
                         textInputAction: TextInputAction.next,
-                        onFieldSubmitted:(value){
-                          FocusScope.of(context).requestFocus(_passTextFocusNode);
-                        } ,
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20.0, vertical: 10.0),
-                      child: TextFormField(
-                        decoration: const InputDecoration(hintText: 'Password'),
-                        controller: _passwordtextEditingController,
-                        keyboardType: TextInputType.text,
-                        focusNode: _passTextFocusNode,
-                        textInputAction: TextInputAction.next,
-                        onFieldSubmitted:(value){
-                          FocusScope.of(context).requestFocus(_emailTextFocusNode);
-                        } ,
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20.0, vertical: 10.0),
-                      child: TextFormField(
-                        decoration: const InputDecoration(hintText: 'Email'),
-                        controller: _emailtextEditingController,
-                        keyboardType: TextInputType.emailAddress,
-                        focusNode: _emailTextFocusNode,
-                        textInputAction: TextInputAction.next,
-                        onFieldSubmitted:(value){
-                          FocusScope.of(context).requestFocus(_deptTextFocusNode);
-                        } ,
+                        onFieldSubmitted: (value) {
+                          FocusScope.of(context)
+                              .requestFocus(_passTextFocusNode);
+                        },
                       ),
                     ),
                     Padding(
@@ -113,14 +97,48 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
                           horizontal: 20.0, vertical: 10.0),
                       child: TextFormField(
                         decoration:
-                            const InputDecoration(hintText: 'Department'),
+                            const InputDecoration(hintText: 'Enter Password'),
+                        controller: _passwordtextEditingController,
+                        keyboardType: TextInputType.text,
+                        obscureText: true,
+                        focusNode: _passTextFocusNode,
+                        textInputAction: TextInputAction.next,
+                        onFieldSubmitted: (value) {
+                          FocusScope.of(context)
+                              .requestFocus(_emailTextFocusNode);
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20.0, vertical: 10.0),
+                      child: TextFormField(
+                        decoration: const InputDecoration(
+                          hintText: 'Enter email',
+                        ),
+                        controller: _emailtextEditingController,
+                        keyboardType: TextInputType.emailAddress,
+                        focusNode: _emailTextFocusNode,
+                        textInputAction: TextInputAction.next,
+                        onFieldSubmitted: (value) {
+                          FocusScope.of(context)
+                              .requestFocus(_deptTextFocusNode);
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20.0, vertical: 10.0),
+                      child: TextFormField(
+                        decoration:
+                            const InputDecoration(hintText: 'Enter department'),
                         controller: _depttextEditingController,
                         keyboardType: TextInputType.text,
                         focusNode: _deptTextFocusNode,
                         textInputAction: TextInputAction.done,
-                        onFieldSubmitted:(value){
+                        onFieldSubmitted: (value) {
                           FocusScope.of(context).unfocus();
-                        } ,
+                        },
                       ),
                     ),
                     Padding(
@@ -129,7 +147,7 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
                           onPressed: () {
                             _saveUserToDb();
                           },
-                          child: const Text('Register')),
+                          child: const Text('Done')),
                     ),
                   ],
                 )),
@@ -149,7 +167,7 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
       return;
     }
 
-    _mlService = MLService.instance;
+    _mlService = Provider.of<MLService>(context, listen: false);
     List<dynamic> model = _mlService.predictedData;
     User user = User(
         userId: const Uuid().v6(),
@@ -164,9 +182,9 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
       _mlService.setPredictedData([]);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('User saved'),
+          content: Text('User saved successfully'),
           backgroundColor: Colors.green,
-          duration: Duration(milliseconds: 2000),
+          duration: Duration(milliseconds: 1000),
         ));
       }
 
@@ -185,7 +203,7 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('User record not saved'),
           backgroundColor: Colors.red,
-          duration: Duration(milliseconds: 2000),
+          duration: Duration(milliseconds: 1000),
         ));
       }
     }

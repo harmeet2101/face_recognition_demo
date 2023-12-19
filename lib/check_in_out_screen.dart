@@ -16,12 +16,13 @@ import 'package:geolocator_platform_interface/src/enums/location_accuracy.dart'
     as la;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import 'package:geocoding/geocoding.dart';
-import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 class CheckInOutScreen extends StatefulWidget {
+  final String appBarTitle;
+
+  const CheckInOutScreen({required this.appBarTitle, super.key});
+
   @override
   State<StatefulWidget> createState() {
     return _CheckInOutState();
@@ -44,7 +45,10 @@ class _CheckInOutState extends State<CheckInOutScreen> {
 
   User? user;
 
-  DatebaseHelper _datebaseHelper = DatebaseHelper.instance;
+  final DatebaseHelper _datebaseHelper = DatebaseHelper.instance;
+
+  final GeoFenceModel _geoFenceModel = GeoFenceModel();
+  bool start = false;
 
   @override
   void initState() {
@@ -65,85 +69,59 @@ class _CheckInOutState extends State<CheckInOutScreen> {
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Attendance Screen')),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                children: [
-                  TextFormField(
-                    enabled: false,
-                    controller: _addressTextController,
-                    decoration: const InputDecoration(
-                      labelStyle: TextStyle(
-                        color: Colors.black,
-                      ),
-                      labelText: 'Current Location',
+      resizeToAvoidBottomInset: false,
+      appBar: AppBar(title: Text(widget.appBarTitle)),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              children: [
+                TextFormField(
+                  enabled: false,
+                  controller: _addressTextController,
+                  decoration: const InputDecoration(
+                    labelStyle: TextStyle(
+                      color: Colors.black,
                     ),
+                    labelText: 'Current Location',
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Within Geofence Area'),
-                        Container(
-                          width: 24,
-                          height: 24,
-                          decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border:
-                                  Border.all(color: Colors.black, width: 0.5),
-                              color: _withinGpsRegion == null
-                                  ? Colors.grey
-                                  : (_withinGpsRegion!
-                                      ? Colors.green
-                                      : Colors.red)),
-                        )
-                      ],
-                    ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 30),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Within Geofence Area'),
+                      Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.black, width: 0.5),
+                            color: _withinGpsRegion == null
+                                ? Colors.grey
+                                : (_withinGpsRegion!
+                                    ? Colors.green
+                                    : Colors.red)),
+                      )
+                    ],
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Check In:'),
-                        Text('Test'),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Check Out:'),
-                        Text('Test'),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Work Duration:'),
-                        Text('8 hrs'),
-                      ],
-                    ),
-                  )
-                ],
-              ),
+                ),
+              ],
             ),
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(vertical: 10, horizontal: 20.0),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20.0),
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.black, width: 0.6),
+                shape: BoxShape.rectangle,
+              ),
               child: SizedBox(
-                height: MediaQuery.of(context).size.height * 0.3,
+                height: MediaQuery.of(context).size.height * 0.4,
                 width: double.infinity,
                 child: _fetchingInitPos
                     ? const Center(
@@ -165,23 +143,57 @@ class _CheckInOutState extends State<CheckInOutScreen> {
                       ),
               ),
             ),
-            Padding(
-                padding: const EdgeInsets.all(8.0),
+          ),
+          const Padding(
+            padding: EdgeInsets.all(8.0),
+            child: Text(
+              '** Long press on map to add Geofence area **',
+              style: TextStyle(color: Colors.red, fontSize: 16.0),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.all(8.0),
+            child: Text(
+              '** User round button to start/stop Geofencing **',
+              style: TextStyle(color: Colors.red, fontSize: 16.0),
+            ),
+          ),
+          const Spacer(),
+          SizedBox(
+            width: double.infinity,
+            child: Container(
+              height: 0.5,
+              color: Colors.black38,
+            ),
+          ),
+          Padding(
+              padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 40),
+              child: SizedBox(
+                //   width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
                     markAttendance();
                   },
-                  child: Text('Done'),
-                ))
-          ],
-        ),
+                  child: const Text('Done'),
+                ),
+              ))
+        ],
       ),
       floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            // _goTodiffLoc();
-            startMonitoring();
+          backgroundColor: Colors.indigo,
+          onPressed: () async {
+            if (!start) {
+              startMonitoring();
+            } else {
+              stopMonitoring();
+            }
+
           },
-          child: const Icon(Icons.home)),
+          elevation: 10.0,
+          child: Text(
+            !start ? 'Start' : 'Stop',
+            softWrap: true,
+          )),
     );
   }
 
@@ -245,83 +257,74 @@ class _CheckInOutState extends State<CheckInOutScreen> {
     setState(() {});
   }
 
-  void addGeofenceArea(LatLng position) {
+  void addGeofenceArea(LatLng? position, {double radius = 200.00}) async {
+    if (position == null) return;
+
     geofenceArea.clear();
-    GeoFenceModel.stopGeofence();
+    _geoFenceModel.stopGeofence();
+
+    if (start) {
+      start = false;
+      _withinGpsRegion = null;
+    }
 
     Circle circle = Circle(
         center: position,
-        radius: 100.0,
+        radius: radius,
         fillColor: Colors.red.shade100.withOpacity(0.8),
         strokeColor: Colors.red.shade100.withOpacity(0.2),
         strokeWidth: 2,
-        circleId: const CircleId('Area 1'));
+        circleId: const CircleId('Business Unit'));
     geofenceArea.add(circle);
 
     setState(() {});
+
+    await Future.delayed(const Duration(milliseconds: 300), () {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Geofencing area added'),
+        backgroundColor: Colors.green,
+      ));
+    });
   }
 
-  void startMonitoring() {
-    if (geofenceArea.isEmpty) return;
+  void startMonitoring() async {
+    if (geofenceArea.isEmpty) {
+      await Future.delayed(const Duration(milliseconds: 300), () {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Add Geofenc area first'),
+          backgroundColor: Colors.red,
+        ));
+      });
+      return;
 
-    GeoFenceModel.startGeofence(
+    }
+
+    start = !start;
+    setState(() {});
+
+    _geoFenceModel.startGeofence(
         pointedLatitude: geofenceArea.first.center.latitude,
         pointedLongitude: geofenceArea.first.center.longitude,
         radius: geofenceArea.first.radius,
-        eventPeriodInSecs: 1200);
+        eventPeriodInSecs: 1000);
 
-    GeoFenceModel.geoStream?.listen((event) {
+    final subs = _geoFenceModel.geoStream?.listen((event) {
       _getAddressFromCoordinates(event.latitude!, event.longitude!);
       _withinGpsRegion = (event.event == GeofenceEvent.enter) ? true : false;
       print('GEO Event ${event.event} within GPS region $_withinGpsRegion');
+    });
+    _geoFenceModel.geoStreamSubc = subs!;
+
+    await Future.delayed(const Duration(milliseconds: 1000), () {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Geofencing started'),
+        backgroundColor: Colors.green,
+      ));
     });
   }
 
   Future<void> _goTodiffLoc() async {
     final controller = await _mapController.future;
-    /*print('calling ${controller}');
-    Position currentLoc = await _getCurrentLocation();
-    final ltlng = LatLng(currentLoc.latitude, currentLoc.longitude);
-    print('current pos ${ltlng.latitude} ${ltlng.longitude}');
-    _markers.clear();
-    _markers.add(Marker(
-        markerId: const MarkerId('My location'),
-        position: ltlng,
-        infoWindow: InfoWindow(
-            title: 'Current location',
-            onTap: () {
-              print('On Click');
-            })));*/
-
-    /* geofenceArea.add(Circle(
-        center: ltlng,
-        radius: 100.0,
-        fillColor: Colors.red.shade100.withOpacity(0.8),
-        strokeColor: Colors.red.shade100.withOpacity(0.2),
-        strokeWidth: 2,
-        circleId: CircleId('Area 1')));*/
-
-    /*  await controller.animateCamera(CameraUpdate.newCameraPosition(
-        CameraPosition(target: ltlng, zoom: _zoomLevel)));*/
-
-    /*  final address =
-        await _getAddressFromCoordinates(ltlng.latitude, ltlng.longitude);
-    print('Address $address');
-    _addressTextController.text = address ?? 'Not known';*/
-
-    /* GeoFenceModel.startGeofence(
-        pointedLatitude: ltlng.latitude,
-        pointedLongitude: ltlng.longitude,
-        radius: 100,
-        eventPeriodInSecs: 1500);
-
-    GeoFenceModel.geoStream?.listen((event) {
-
-      _getAddressFromCoordinates(event.latitude!, event.longitude!);
-      _withinGpsRegion = (event.event == GeofenceEvent.enter) ? true : false;
-      print('GEO Event ${event.event} within GPS region $_withinGpsRegion');
-    });*/
-
     await controller
         .animateCamera(CameraUpdate.newCameraPosition(_initialCameraPos));
     setState(() {});
@@ -351,24 +354,37 @@ class _CheckInOutState extends State<CheckInOutScreen> {
     setState(() {});
 
     if (res > 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Attendance marked successfully'),
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('${widget.appBarTitle} success'),
         backgroundColor: Colors.green,
-        duration: Duration(milliseconds: 1500),
+        duration: const Duration(milliseconds: 1000),
       ));
       Navigator.of(context).pop(STATUS_CODE_OK);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Attendance marked failure'),
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('${widget.appBarTitle} failure'),
         backgroundColor: Colors.red,
-        duration: Duration(milliseconds: 1500),
+        duration: const Duration(milliseconds: 1000),
       ));
     }
   }
 
   @override
   void dispose() {
-    GeoFenceModel.stopGeofence();
+    _geoFenceModel.stopGeofence();
     super.dispose();
+  }
+
+  void stopMonitoring() async {
+    _geoFenceModel.stopGeofence();
+    _withinGpsRegion = null;
+    start = !start;
+    setState(() {});
+    await Future.delayed(const Duration(milliseconds: 1000), () {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Geofencing stopped'),
+        backgroundColor: Colors.red,
+      ));
+    });
   }
 }

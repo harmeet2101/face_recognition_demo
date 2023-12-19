@@ -1,14 +1,14 @@
+import 'dart:ui';
+
 import 'package:camera/camera.dart';
-import 'package:face_recognition_demo/common/utils/file_utils.dart';
 import 'package:face_recognition_demo/common/utils/image_utils.dart';
-import 'package:face_recognition_demo/common/utils/shared__preferences.dart';
-import 'package:face_recognition_demo/common/widgets/custom_progress_dialog.dart';
+import 'package:face_recognition_demo/servicies/models/camera_preview_model.dart';
+import 'package:face_recognition_demo/servicies/models/ml_view_model.dart';
 import 'package:face_recognition_demo/ui/home/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:face_recognition_demo/servicies/face_detector_service.dart';
-import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 import 'package:face_recognition_demo/FacePainter.dart';
 
@@ -17,13 +17,20 @@ import 'package:face_recognition_demo/servicies/ml_service.dart';
 import 'package:face_recognition_demo/register_screen.dart';
 
 import 'package:face_recognition_demo/servicies/database_helper.dart';
+import 'package:provider/provider.dart';
 
 enum NavigateFrom { register, login }
 
 class CameraPreviewScreen extends StatefulWidget {
   final NavigateFrom navigateFrom;
-
-  const CameraPreviewScreen({super.key, required this.navigateFrom});
+ // late final MLService mlService;
+ // late final FaceDetectorService faceDetectorService;
+  const CameraPreviewScreen(
+      {super.key,
+      required this.navigateFrom,
+     // required this.mlService,
+      //required this.faceDetectorService
+   });
 
   @override
   State<StatefulWidget> createState() => _CameraPreviewScreenState();
@@ -34,13 +41,17 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
   late CameraController _cameraController;
   late FaceDetectorService _faceDetector;
   late MLService _mlService;
-  Face? _faceDetected;
-  bool _detectingFaces = false;
-  bool _capturingImage = false;
   bool _cameraFront = true;
-  bool _predicting = false;
-  bool _saving = false;
   Size? imageSize;
+
+
+
+   late final MLService _mlViewModel = context.read<MLService>();
+   late final FaceDetectorService _faceDetectorService = context.read<FaceDetectorService>();
+
+  late final CameraPreviewModel _cameraPreviewModel = CameraPreviewModel(
+      faceDetectorService: _faceDetectorService,
+      mlService: _mlViewModel);
 
   @override
   void initState() {
@@ -50,171 +61,32 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
   }
 
   Future<List<CameraDescription>> _availableCameras() async {
-
-
-
     final cameras = await availableCameras();
 
     if (cameras.isNotEmpty) {
-        _cameraController = CameraController(
-            _cameraFront ? cameras[1] : cameras[0], ResolutionPreset.high);
-        await _cameraController
-            .initialize()
-            /*.then((value) => startFaceDetection())*/
-            .onError((error, stackTrace) => throw Future.error('Error $error'));
-      }
-
-      return cameras;
+      _cameraController = CameraController(
+          _cameraFront ? cameras[1] : cameras[0], ResolutionPreset.high);
+      await _cameraController.initialize().then((value) {
+        _cameraPreviewModel.cameraController = _cameraController;
+        _cameraPreviewModel.startFaceDetection();
+      }).onError((error, stackTrace) => throw Future.error('Error $error'));
     }
 
+    return cameras;
+  }
 
   void initilize() {
-    _faceDetector = FaceDetectorService();
-    _faceDetector.initialize();
-    _mlService = MLService.instance;
-    _mlService.initialize();
+    // _faceDetector = FaceDetectorService();
+    //  _faceDetector.initialize();
+    //   _mlService = MLService.instance;
+    //   _mlService.initialize();
 
     if (widget.navigateFrom == NavigateFrom.login) {
       DatebaseHelper.instance.initailize();
     }
-  }
 
-  void startFaceDetection() {
-    if (!_cameraController.value.isInitialized) {
-      return;
-    }
-
-    imageSize = ImageUitls.getImageSize(_cameraController);
-
-    _cameraController.startImageStream((image) async {
-      try {
-        if (_detectingFaces) return;
-        _detectingFaces = true;
-
-        final faces = await _faceDetector.processImage(image,
-            inputImageRotation: ImageUitls.rotationIntToImageRotation(
-                _cameraController.description.sensorOrientation));
-
-        if (faces.isNotEmpty) {
-          _faceDetected = faces[0];
-
-          if (_saving) {
-            _mlService.setCurrentPrediction(image, _faceDetected);
-
-            if (widget.navigateFrom == NavigateFrom.login) {
-              await _predictingImage(data: _mlService.predictedData);
-            }
-            _saving = false;
-            setState(() {});
-          }
-        } else {
-          _faceDetected = null;
-        }
-
-        _detectingFaces = false;
-
-          setState(() {});
-      } on Error catch (e) {
-        _detectingFaces = false;
-        print('Error while detectiing face: $e');
-        //  setState(() {});
-      }
-    });
-  }
-
-  Future<void> _predict() async {
-    if (_faceDetected == null) {
-      ScaffoldMessenger.of(context).clearSnackBars();
-
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('No face detected!'),
-        backgroundColor: Colors.red,
-        duration: Duration(milliseconds: 1000),
-      ));
-      return;
-    }
-
-    if (!_cameraController.value.isInitialized) {
-      return;
-    }
-    if (_cameraController.value.isTakingPicture) {
-      return;
-    }
-
-    _saving = true;
-    _capturingImage = true;
-    _predicting = true;
-    setState(() {});
-  }
-
-  Future<void> _savingImage() async {
-    if (_faceDetected == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('No face detected!'),
-        backgroundColor: Colors.red,
-        duration: Duration(milliseconds: 1000),
-      ));
-      return;
-    }
-
-    if (!_cameraController.value.isInitialized) {
-      return;
-    }
-    if (_cameraController.value.isTakingPicture) {
-      return;
-    }
-
-    _saving = true;
-    _capturingImage = true;
-    setState(() {});
-
-    CustomProgressDialog(context: context).show();
-
-    await Future.delayed(const Duration(seconds: 2));
-
-    XFile file = await _cameraController.takePicture();
-
-    final imageFile = await FileUtils.saveCapturedImage(file.path);
-
-    CustomProgressDialog(context: context).hide();
-
-    _capturingImage = false;
-    setState(() {});
-
-    Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (context) => RegisterFormWidget(picture: imageFile!)));
-  }
-
-  Future<void> _predictingImage({required List<dynamic> data}) async {
-    final user = await _mlService.predict(data);
-
-    Future.delayed(Duration(milliseconds: 3000));
-
-    if (user != null) {
-      await PreferenceManager.instance.saveUser(user);
-      _predicting = false;
-      _capturingImage = false;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('User found'),
-        duration: Duration(milliseconds: 1000),
-        backgroundColor: Colors.green,
-      ));
-      Future.delayed(Duration(milliseconds: 1000));
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const DashboardScreen()),
-        (route) => false,
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('User record not found'),
-        duration: Duration(milliseconds: 1000),
-        backgroundColor: Colors.red,
-      ));
-    }
-    _capturingImage = false;
-    _predicting = false;
+    // _mlViewModel = context.read<MlViewModel>();
+    // _faceDetectorService = context.read<FaceDetectorService>();
   }
 
   @override
@@ -246,19 +118,60 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
                             fit: StackFit.expand,
                             children: [
                               CameraPreview(_cameraController),
-                                      !_capturingImage ||
-                                      !_predicting
-                                  ? CustomPaint(
+                              ChangeNotifierProvider.value(
+                                value: _cameraPreviewModel,
+                                builder: (context, _) {
+                                  final model =
+                                      context.watch<CameraPreviewModel>();
+                                  final controller = context
+                                      .watch<CameraPreviewModel>()
+                                      .cameraController;
+
+                                  if (controller != null) {
+                                    return CustomPaint(
                                       painter: FacePainter(
-                                          face: _faceDetected,
-                                          imageSize: ImageUitls.getImageSize(_cameraController)),
-                                    )
-                                  : const SizedBox.shrink(),
-                              _predicting
-                                  ? const Center(
-                                      child: CircularProgressIndicator(),
-                                    )
-                                  : const SizedBox.shrink()
+                                          face: model.faceDetected,
+                                          imageSize: ImageUitls.getImageSize(
+                                              controller)),
+                                    );
+                                  } else {
+                                    return Container();
+                                  }
+                                  ;
+                                },
+                              ),
+                              ChangeNotifierProvider.value(
+                                value: _cameraPreviewModel,
+                                builder: (context, _) {
+                                  final value = context
+                                      .watch<CameraPreviewModel>()
+                                      .capturingImage;
+                                  if (value) {
+                                    return Material(
+                                      color: Colors.transparent,
+                                      child: BackdropFilter(
+                                        filter: ImageFilter.blur(
+                                            sigmaX: 10, sigmaY: 10),
+                                        child: const Center(
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              CircularProgressIndicator(),
+                                              SizedBox(
+                                                height: 15,
+                                              ),
+                                              Text('Please wait...',style: TextStyle(color: Colors.white),)
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  } else {
+                                    return const SizedBox.shrink();
+                                  }
+                                },
+                              )
                             ],
                           ),
                         ),
@@ -289,7 +202,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
                                   size: 35.0,
                                 )),
                           ),
-                          SizedBox(
+                          const SizedBox(
                             width: 10.0,
                           ),
                           Ink(
@@ -298,10 +211,72 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
                               shape: CircleBorder(),
                             ),
                             child: IconButton(
-                                onPressed: () =>
-                                    widget.navigateFrom == NavigateFrom.register
-                                        ? _savingImage()
-                                        : _predict(),
+                                onPressed: () async {
+                                  if (widget.navigateFrom ==
+                                      NavigateFrom.register) {
+                                    final res =
+                                        await _cameraPreviewModel.capturing();
+
+                                    if (res == null) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(const SnackBar(
+                                        content: Text('No face detected!'),
+                                        backgroundColor: Colors.red,
+                                        duration: Duration(milliseconds: 1000),
+                                      ));
+                                    }
+
+                                    if (res != null) {
+                                      Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (context) =>
+                                                  RegisterFormWidget(
+                                                      picture: res)));
+                                    }
+                                  } else {
+                                    final res =
+                                        await _cameraPreviewModel.predict();
+
+                                    if (res == null) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(const SnackBar(
+                                        content: Text('No face detected!'),
+                                        backgroundColor: Colors.red,
+                                        duration: Duration(milliseconds: 1000),
+                                      ));
+                                    }
+
+                                    if (res != null) {
+                                      if (res) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(SnackBar(
+                                          content: Text('User found'),
+                                          duration:
+                                              Duration(milliseconds: 1000),
+                                          backgroundColor: Colors.green,
+                                        ));
+
+                                        Navigator.of(context)
+                                            .pushAndRemoveUntil(
+                                          MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const DashboardScreen()),
+                                          (route) => false,
+                                        );
+                                      } else {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(const SnackBar(
+                                          content:
+                                              Text('User record not found'),
+                                          duration:
+                                              Duration(milliseconds: 1000),
+                                          backgroundColor: Colors.red,
+                                        ));
+                                      }
+                                    }
+                                  }
+                                },
                                 icon: const Icon(
                                   Icons.camera_sharp,
                                   size: 35.0,
@@ -326,9 +301,12 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
 
   @override
   void dispose() {
-    _cameraController.dispose();
-    _faceDetector.dispose();
-    _mlService.dispose();
+    // _cameraController.dispose();
+    // _faceDetector.dispose();
+    //  _mlService.dispose();
+    if (mounted) {
+      _cameraPreviewModel.dispose();
+    }
     super.dispose();
   }
 }

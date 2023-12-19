@@ -25,109 +25,139 @@ class ProfileScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('profile'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-        child: Column(
-          children: [
-            Container(
-              width: 100,
-              height: 100,
+      body:Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20,horizontal: 30),
+            child: Container(
+              width: 120,
+              height: 120,
               decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.black54, width: 0.5)),
-              child: Icon(Icons.person),
+                  shape: BoxShape.rectangle,
+                  border: Border.all(color: Colors.black54, width: 1.0)),
+              child: Image.asset('assets/images/avatar_default_image.jpeg',
+                  fit: BoxFit.contain),
             ),
-            const SizedBox(
-              height: 60,
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          ),
+          const SizedBox(
+            height: 60,
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20,horizontal: 30),
+            child: Column(
               children: [
-                const Text(
-                  'Username',
-                  style: headingTextStyle,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Username',
+                      style: headingTextStyle,
+                    ),
+                    Text(
+                      '${user.username}',
+                      style: subHeadingTextStyle,
+                    )
+                  ],
                 ),
-                Text(
-                  '${user.username}',
-                  style: subHeadingTextStyle,
-                )
+                const SizedBox(
+                  height: 20,
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Email', style: headingTextStyle),
+                    Text(user.email ?? 'NA', style: subHeadingTextStyle)
+                  ],
+                ),
+                const SizedBox(
+                  height: 20,
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Department', style: headingTextStyle),
+                    Text(user.dept ?? 'NA', style: subHeadingTextStyle)
+                  ],
+                ),
               ],
             ),
-            const SizedBox(
-              height: 20,
+          ),
+          const Spacer(),
+          SizedBox(
+            width: double.infinity,
+            child: Container(
+              height: 0.5,
+              color: Colors.black38,
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20,horizontal: 30),
+            child: Column(
               children: [
-                const Text('Email', style: headingTextStyle),
-                Text(user.email ?? 'NA', style: subHeadingTextStyle)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                      onPressed: () async {
+                        final res = await PreferenceManager.instance.removeUser();
+                        if (res) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                            content: Text('User Logged out successfully'),
+                            backgroundColor: Colors.green,
+                            duration: Duration(milliseconds: 1000),
+                          ));
+                          Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => LandingScreen()),
+                                  (route) => false);
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                            content: Text('User Logged out failure'),
+                            backgroundColor: Colors.red,
+                            duration: Duration(milliseconds: 1000),
+                          ));
+                        }
+                      },
+                      child: const Text('Sign out')),
+                ),
+                const SizedBox(
+                  height: 20,
+                ),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                      onPressed: () async {
+                        final local = await PreferenceManager.instance.removeUser();
+                        final dbClear =
+                        await DatebaseHelper.instance.removeAllUsers();
+                        if (local && dbClear!) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                            content: Text('All Data has been removed successfully'),
+                            backgroundColor: Colors.green,
+                            duration: Duration(milliseconds: 1000),
+                          ));
+                          Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => LandingScreen()),
+                                  (route) => false);
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                            content: Text('Something went wrong'),
+                            backgroundColor: Colors.red,
+                            duration: Duration(milliseconds: 1000),
+                          ));
+                        }
+                      },
+                      child: const Text('Clear All Data')),
+                ),
+                const SizedBox(
+                  height: 20,
+                ),
               ],
             ),
-            const SizedBox(
-              height: 20,
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Department', style: headingTextStyle),
-                Text(user.dept ?? 'NA', style: subHeadingTextStyle)
-              ],
-            ),
-            const Spacer(),
-            ElevatedButton(
-                onPressed: () async {
-                  final res = await PreferenceManager.instance.removeUser();
-                  if (res) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('User removed successfully'),
-                      backgroundColor: Colors.green,
-                      duration: Duration(milliseconds: 1000),
-                    ));
-                    Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (context) => LandingScreen()),
-                        (route) => false);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('User not removed'),
-                      backgroundColor: Colors.red,
-                      duration: Duration(milliseconds: 1000),
-                    ));
-                  }
-                },
-                child: const Text('Sign out')),
-            const SizedBox(
-              height: 10,
-            ),
-            ElevatedButton(
-                onPressed: () async {
-                  final local = await PreferenceManager.instance.removeUser();
-                  final dbClear =
-                      await DatebaseHelper.instance.removeAllUsers();
-                  if (local && dbClear!) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('All Data has been removed successfully'),
-                      backgroundColor: Colors.green,
-                      duration: Duration(milliseconds: 1000),
-                    ));
-                    Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (context) => LandingScreen()),
-                        (route) => false);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Something went wrong'),
-                      backgroundColor: Colors.red,
-                      duration: Duration(milliseconds: 1000),
-                    ));
-                  }
-                },
-                child: const Text('Clear All Data')),
-            const SizedBox(
-              height: 20,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

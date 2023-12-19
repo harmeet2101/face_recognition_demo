@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
+import 'package:face_recognition_demo/servicies/models/database_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -20,6 +21,8 @@ class MlViewModel with ChangeNotifier {
   bool _startPrediction = false;
   bool get startPrediction => _startPrediction;
   set startPrediction(bool value) => _startPrediction = value;
+
+ // DataBaseModel dataBaseModel;
 
   MlViewModel() {
     initialize();
@@ -166,5 +169,4 @@ class MlViewModel with ChangeNotifier {
   void setPredictedData(value) {
     this._predictedData = value;
   }
-
 }

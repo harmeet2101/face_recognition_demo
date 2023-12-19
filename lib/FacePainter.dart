@@ -15,7 +15,7 @@ class FacePainter extends CustomPainter {
     if (this.face!.headEulerAngleY! > 10 || this.face!.headEulerAngleY! < -10) {
       paint = Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth =2.0
+        ..strokeWidth = 2.0
         ..color = Colors.red;
     } else {
       paint = Paint()
@@ -26,6 +26,11 @@ class FacePainter extends CustomPainter {
 
     scaleX = size.width / imageSize.width;
     scaleY = size.height / imageSize.height;
+
+   /* print('box ${face!.boundingBox}');
+    print('widget size ${size.width} ${size.height}');
+    print('image size ${imageSize.width} ${imageSize.height}');
+    print('scale $scaleX $scaleY');*/
 
     canvas.drawRRect(
         _scaleRect(
@@ -50,8 +55,9 @@ RRect _scaleRect(
     double scaleX = 1,
     double scaleY = 1}) {
   return RRect.fromLTRBR(
-      (widgetSize.width - rect.left.toDouble() * scaleX),
-      rect.top.toDouble() * scaleY,
-      widgetSize.width - rect.right.toDouble() * scaleX,
-      rect.bottom.toDouble() * scaleY,const Radius.circular(1.0));
+      (widgetSize.width - rect.left * scaleX),
+      rect.top * scaleY,
+      widgetSize.width - rect.right * scaleX,
+      rect.bottom * scaleY,
+      const Radius.circular(1.0));
 }

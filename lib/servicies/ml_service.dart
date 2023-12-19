@@ -13,7 +13,7 @@ import 'package:image/image.dart' as imglib;
 import 'package:face_recognition_demo/common/utils/image_converter.dart';
 import 'database_helper.dart';
 
-class MLService {
+class MLService with ChangeNotifier{
   Interpreter? _interpreter;
   double threshold = 1.5;
 
@@ -23,8 +23,10 @@ class MLService {
   bool get startPrediction => _startPrediction;
   set startPrediction(bool value) => _startPrediction = value;
 
-  MLService._();
-  static final MLService instance = MLService._();
+  MLService(){
+    initialize();
+  }
+
 
   Future initialize() async {
     late Delegate delegate;
@@ -161,8 +163,11 @@ class MLService {
     this._predictedData = value;
   }
 
-  dispose() {
+  @override
+  void dispose() {
+
     this._predictedData.clear();
     this._interpreter = null;
+    super.dispose();
   }
 }
