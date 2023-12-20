@@ -59,26 +59,6 @@ class ProfileScreen extends StatelessWidget {
                     )
                   ],
                 ),
-                const SizedBox(
-                  height: 20,
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Email', style: headingTextStyle),
-                    Text(user.email ?? 'NA', style: subHeadingTextStyle)
-                  ],
-                ),
-                const SizedBox(
-                  height: 20,
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Department', style: headingTextStyle),
-                    Text(user.dept ?? 'NA', style: subHeadingTextStyle)
-                  ],
-                ),
               ],
             ),
           ),

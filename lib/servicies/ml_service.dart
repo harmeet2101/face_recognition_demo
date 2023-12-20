@@ -15,7 +15,7 @@ import 'database_helper.dart';
 
 class MLService with ChangeNotifier{
   Interpreter? _interpreter;
-  double threshold = 1.5;
+  double threshold = 0.9;
 
   List<dynamic> _predictedData = [];
   List<dynamic> get predictedData => _predictedData;
@@ -75,7 +75,7 @@ class MLService with ChangeNotifier{
     output = output.reshape([192]);
 //    print('output reshape ${output.shape}');
     this._predictedData = List.from(output);
-    print('predictedData ${_predictedData}');
+  //  print('predictedData ${_predictedData}');
 
     /*if (_startPrediction) {
       predict(_predictedData)
@@ -139,7 +139,7 @@ class MLService with ChangeNotifier{
     for (User u in users) {
       currDist = _euclideanDistance(u.userModel, predictedData);
      // print('u.model ${u.userModel}');
-      print('########################### $currDist');
+    //  print('########################### $currDist');
      // print('predicted date ${predictedData}');
       if (currDist <= threshold && currDist < minDist) {
         minDist = currDist;

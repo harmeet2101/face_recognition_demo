@@ -14,8 +14,6 @@ class DatebaseHelper {
   final String _dbColumnUserId = 'userId';
   final String _dbColumnName = 'username';
   final String _dbColumnPassword = 'password';
-  final String _dbColumnEmail = 'email';
-  final String _dbColumnDept = 'dept';
   final String _dbColumnUserModel = 'userModel';
 
   final String _dbAttendanceTable = 'users_attendance';
@@ -52,7 +50,8 @@ class DatebaseHelper {
 
   Future<void> createTables(Database db) async {
     await db.execute(
-        'create table $_dbUsersTable ($_dbColumnUserId TEXT PRIMARY KEY NOT NULL,$_dbColumnName TEXT NOT NULL,$_dbColumnPassword TEXT NOT NULL,$_dbColumnUserModel TEXT NOT NULL,$_dbColumnEmail TEXT, $_dbColumnDept TEXT)');
+        'create table $_dbUsersTable ($_dbColumnUserId TEXT PRIMARY KEY NOT NULL,'
+            '$_dbColumnName TEXT NOT NULL,$_dbColumnPassword TEXT NOT NULL,$_dbColumnUserModel TEXT NOT NULL)');
     await db.execute(
         'create table $_dbAttendanceTable ($_dbColumnAttendanceId TEXT PRIMARY KEY NOT NULL,'
         '$_dbColumnClockInDate TEXT,'
@@ -64,12 +63,11 @@ class DatebaseHelper {
         '$_dbColumnCheckInStatus INTEGER ,'
         '$_dbColumnCheckOutStatus INTEGER ,'
         '$_dbColumnUserId TEXT NOT NULL,'
-        ' FOREIGN KEY ($_dbColumnUserId) REFERENCES $_dbUsersTable ($_dbColumnUserId))');
+        ' FOREIGN KEY ($_dbColumnUserId) REFERENCES $_dbUsersTable ($_dbColumnUserId) ON DELETE CASCADE)');
   }
 
   Future<int> insertUser(User user) async {
     final res = await _database.insert(_dbUsersTable, user.toJson());
-    print('Res $res');
     return res;
   }
 

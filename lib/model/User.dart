@@ -13,8 +13,6 @@ class User {
   String? userId;
   String? username;
   String? password;
-  String? email;
-  String? dept;
   @JsonKey(toJson: _encode, fromJson: _decode)
   List<dynamic>? userModel;
 
@@ -22,9 +20,7 @@ class User {
       {this.userId,
       this.username,
       this.password,
-      this.email,
-      this.userModel,
-      this.dept});
+      this.userModel,});
 
 
 
@@ -36,6 +32,6 @@ class User {
 
   @override
   String toString() {
-    return 'User{userId: $userId, username: $username, password: $password, email: $email ,dept: $dept userModel: $userModel}';
+    return 'User{userId: $userId, username: $username, password: $password,userModel: $userModel}';
   }
 }

@@ -26,13 +26,9 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
   late DatebaseHelper _datebaseHelper;
   late TextEditingController _nametextEditingController;
   late TextEditingController _passwordtextEditingController;
-  late TextEditingController _emailtextEditingController;
-  late TextEditingController _depttextEditingController;
   late MLService _mlService;
-  FocusNode _nameTextFocusNode = FocusNode();
-  FocusNode _passTextFocusNode = FocusNode();
-  FocusNode _emailTextFocusNode = FocusNode();
-  FocusNode _deptTextFocusNode = FocusNode();
+  final FocusNode _nameTextFocusNode = FocusNode();
+  final FocusNode _passTextFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -40,9 +36,6 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
     _datebaseHelper.initailize();
     _nametextEditingController = TextEditingController();
     _passwordtextEditingController = TextEditingController();
-    _emailtextEditingController = TextEditingController();
-    _depttextEditingController = TextEditingController();
-
     super.initState();
   }
 
@@ -102,45 +95,14 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
                         keyboardType: TextInputType.text,
                         obscureText: true,
                         focusNode: _passTextFocusNode,
-                        textInputAction: TextInputAction.next,
-                        onFieldSubmitted: (value) {
-                          FocusScope.of(context)
-                              .requestFocus(_emailTextFocusNode);
-                        },
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20.0, vertical: 10.0),
-                      child: TextFormField(
-                        decoration: const InputDecoration(
-                          hintText: 'Enter email',
-                        ),
-                        controller: _emailtextEditingController,
-                        keyboardType: TextInputType.emailAddress,
-                        focusNode: _emailTextFocusNode,
-                        textInputAction: TextInputAction.next,
-                        onFieldSubmitted: (value) {
-                          FocusScope.of(context)
-                              .requestFocus(_deptTextFocusNode);
-                        },
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20.0, vertical: 10.0),
-                      child: TextFormField(
-                        decoration:
-                            const InputDecoration(hintText: 'Enter department'),
-                        controller: _depttextEditingController,
-                        keyboardType: TextInputType.text,
-                        focusNode: _deptTextFocusNode,
                         textInputAction: TextInputAction.done,
                         onFieldSubmitted: (value) {
-                          FocusScope.of(context).unfocus();
+                          FocusScope.of(context)
+                              .unfocus();
                         },
                       ),
                     ),
+
                     Padding(
                       padding: const EdgeInsets.all(20.0),
                       child: ElevatedButton(
@@ -173,8 +135,6 @@ class _RegisterFormWidgetState extends State<RegisterFormWidget> {
         userId: const Uuid().v6(),
         username: _nametextEditingController.text,
         password: _passwordtextEditingController.text,
-        email: _emailtextEditingController.text,
-        dept: _depttextEditingController.text,
         userModel: model);
     final res = await _datebaseHelper.insertUser(user);
     if (res > 0) {

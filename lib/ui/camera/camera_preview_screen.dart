@@ -1,21 +1,14 @@
 import 'dart:ui';
-
 import 'package:camera/camera.dart';
 import 'package:face_recognition_demo/common/utils/image_utils.dart';
 import 'package:face_recognition_demo/servicies/models/camera_preview_model.dart';
-import 'package:face_recognition_demo/servicies/models/ml_view_model.dart';
 import 'package:face_recognition_demo/ui/home/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
 import 'package:face_recognition_demo/servicies/face_detector_service.dart';
-
 import 'package:face_recognition_demo/FacePainter.dart';
-
 import 'package:face_recognition_demo/servicies/ml_service.dart';
-
 import 'package:face_recognition_demo/register_screen.dart';
-
 import 'package:face_recognition_demo/servicies/database_helper.dart';
 import 'package:provider/provider.dart';
 
@@ -23,40 +16,30 @@ enum NavigateFrom { register, login }
 
 class CameraPreviewScreen extends StatefulWidget {
   final NavigateFrom navigateFrom;
- // late final MLService mlService;
- // late final FaceDetectorService faceDetectorService;
-  const CameraPreviewScreen(
-      {super.key,
-      required this.navigateFrom,
-     // required this.mlService,
-      //required this.faceDetectorService
-   });
+
+  const CameraPreviewScreen({
+    super.key,
+    required this.navigateFrom,
+  });
 
   @override
   State<StatefulWidget> createState() => _CameraPreviewScreenState();
 }
 
 class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
-  Future<List<CameraDescription>>? _camerasList;
   late CameraController _cameraController;
-  late FaceDetectorService _faceDetector;
-  late MLService _mlService;
   bool _cameraFront = true;
   Size? imageSize;
 
-
-
-   late final MLService _mlViewModel = context.read<MLService>();
-   late final FaceDetectorService _faceDetectorService = context.read<FaceDetectorService>();
+  late final MLService _mlViewModel = context.read<MLService>();
+  late final FaceDetectorService _faceDetectorService =
+      context.read<FaceDetectorService>();
 
   late final CameraPreviewModel _cameraPreviewModel = CameraPreviewModel(
-      faceDetectorService: _faceDetectorService,
-      mlService: _mlViewModel);
+      faceDetectorService: _faceDetectorService, mlService: _mlViewModel);
 
   @override
   void initState() {
-    //  _camerasList = _availableCameras();
-    initilize();
     super.initState();
   }
 
@@ -66,27 +49,18 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
     if (cameras.isNotEmpty) {
       _cameraController = CameraController(
           _cameraFront ? cameras[1] : cameras[0], ResolutionPreset.high);
+
       await _cameraController.initialize().then((value) {
         _cameraPreviewModel.cameraController = _cameraController;
         _cameraPreviewModel.startFaceDetection();
+
+        if (widget.navigateFrom == NavigateFrom.login) {
+          DatebaseHelper.instance.initailize();
+        }
       }).onError((error, stackTrace) => throw Future.error('Error $error'));
     }
 
     return cameras;
-  }
-
-  void initilize() {
-    // _faceDetector = FaceDetectorService();
-    //  _faceDetector.initialize();
-    //   _mlService = MLService.instance;
-    //   _mlService.initialize();
-
-    if (widget.navigateFrom == NavigateFrom.login) {
-      DatebaseHelper.instance.initailize();
-    }
-
-    // _mlViewModel = context.read<MlViewModel>();
-    // _faceDetectorService = context.read<FaceDetectorService>();
   }
 
   @override
@@ -161,7 +135,11 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
                                               SizedBox(
                                                 height: 15,
                                               ),
-                                              Text('Please wait...',style: TextStyle(color: Colors.white),)
+                                              Text(
+                                                'Please wait...',
+                                                style: TextStyle(
+                                                    color: Colors.white),
+                                              )
                                             ],
                                           ),
                                         ),
@@ -301,9 +279,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
 
   @override
   void dispose() {
-    // _cameraController.dispose();
-    // _faceDetector.dispose();
-    //  _mlService.dispose();
     if (mounted) {
       _cameraPreviewModel.dispose();
     }

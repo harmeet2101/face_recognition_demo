@@ -54,15 +54,16 @@ class CameraPreviewModel with ChangeNotifier {
           _faceDetected = null;
         }
 
-        print(
-            'Face detected: topLeftOffset ${_faceDetected!.boundingBox.topLeft}, id: ${_faceDetected!.trackingId}');
+        //      print('Face detected: topLeftOffset ${_faceDetected!.boundingBox.topLeft}, id: ${_faceDetected!.trackingId}');
 
         _stopDetectingFaces = false;
       } on Error catch (e) {
         _stopDetectingFaces = false;
-        print('Error while detectiing face: $e');
+        //    print('Error while detectiing face');
       } finally {
-        notifyListeners();
+        if (hasListeners) {
+          notifyListeners();
+        }
       }
     });
   }
@@ -79,6 +80,10 @@ class CameraPreviewModel with ChangeNotifier {
       return null;
     }
 
+    //  await Future.delayed(const Duration(milliseconds: 2000));
+
+    XFile file = await _cameraController!.takePicture();
+
     _capturingImage = true;
     _stopDetectingFaces = true;
 
@@ -87,10 +92,6 @@ class CameraPreviewModel with ChangeNotifier {
     if (_capturingImage) {
       mlService.setCurrentPrediction(cameraImage, _faceDetected);
     }
-
-    await Future.delayed(const Duration(milliseconds: 2000));
-
-    XFile file = await _cameraController!.takePicture();
 
     final imageFile = await FileUtils.saveCapturedImage(file.path);
 
@@ -102,7 +103,7 @@ class CameraPreviewModel with ChangeNotifier {
     return imageFile;
   }
 
-  Future<bool?> predict() async {
+  Future<bool?> predict({bool checkInOut = false}) async {
     if (_faceDetected == null ||
         !_cameraController!.value.isInitialized ||
         _cameraController!.value.isTakingPicture) {
@@ -120,19 +121,28 @@ class CameraPreviewModel with ChangeNotifier {
 
     final user = await mlService.predict(mlService.predictedData);
 
-    await Future.delayed(const Duration(milliseconds: 2000));
+    //  await Future.delayed(const Duration(milliseconds: 1000));
 
     bool res = false;
 
-    if (user != null) {
+    _capturingImage = false;
+    _stopDetectingFaces = false;
+
+    if (user != null && !checkInOut) {
       await PreferenceManager.instance.saveUser(user);
       res = true;
+    } else if (user != null && checkInOut) {
+      final localUser = await PreferenceManager.instance.getUser();
+      print('Local userId and name ${localUser!.userId} ${localUser.username} ');
+      print('predicted userId and name ${user.userId} ${user.username} ');
+      if (localUser!.userId == user.userId) {
+        res = true;
+      } else {
+        res = false;
+      }
     } else {
       res = false;
     }
-
-    _capturingImage = false;
-    _stopDetectingFaces = false;
 
     notifyListeners();
 
@@ -141,10 +151,8 @@ class CameraPreviewModel with ChangeNotifier {
 
   @override
   void dispose() async {
-    _cameraController?.stopImageStream();
-    await Future.delayed(const Duration(milliseconds: 500));
-    _cameraController?.dispose();
-
+    await _cameraController?.stopImageStream();
+    await _cameraController?.dispose();
     super.dispose();
   }
 }

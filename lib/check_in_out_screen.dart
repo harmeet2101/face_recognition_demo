@@ -1,10 +1,17 @@
 import 'dart:async';
+import 'dart:ui';
 
+import 'package:camera/camera.dart';
+import 'package:face_recognition_demo/common/utils/image_utils.dart';
+import 'package:face_recognition_demo/common/widgets/custom_progress_dialog.dart';
 import 'package:face_recognition_demo/model/User.dart';
 import 'package:face_recognition_demo/common/utils/shared__preferences.dart';
 import 'package:face_recognition_demo/model/user_attendance.dart';
 import 'package:face_recognition_demo/servicies/database_helper.dart';
+import 'package:face_recognition_demo/servicies/face_detector_service.dart';
 import 'package:face_recognition_demo/servicies/geo_fence_model.dart';
+import 'package:face_recognition_demo/servicies/ml_service.dart';
+import 'package:face_recognition_demo/servicies/models/camera_preview_model.dart';
 import 'package:face_recognition_demo/ui/home/home_screen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -15,8 +22,11 @@ import 'package:geolocator_platform_interface/src/enums/location_permission.dart
 import 'package:geolocator_platform_interface/src/enums/location_accuracy.dart'
     as la;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:provider/provider.dart';
 
 import 'package:uuid/uuid.dart';
+
+import 'FacePainter.dart';
 
 class CheckInOutScreen extends StatefulWidget {
   final String appBarTitle;
@@ -50,9 +60,21 @@ class _CheckInOutState extends State<CheckInOutScreen> {
   final GeoFenceModel _geoFenceModel = GeoFenceModel();
   bool start = false;
 
+  late CameraController _cameraController;
+
+  late final MLService _mlViewModel = context.read<MLService>();
+  late final FaceDetectorService _faceDetectorService =
+      context.read<FaceDetectorService>();
+
+  late final CameraPreviewModel _cameraPreviewModel = CameraPreviewModel(
+      faceDetectorService: _faceDetectorService, mlService: _mlViewModel);
+
+  Future<List<CameraDescription>>? _cameraList;
+
   @override
   void initState() {
     setupMap();
+    _cameraList = _availableCameras();
     super.initState();
   }
 
@@ -67,16 +89,30 @@ class _CheckInOutState extends State<CheckInOutScreen> {
     print('User ${user ?? 'NA'}');
   }
 
+  Future<List<CameraDescription>> _availableCameras() async {
+    final cameras = await availableCameras();
+
+    if (cameras.isNotEmpty) {
+      _cameraController = CameraController(cameras[1], ResolutionPreset.high);
+      await _cameraController.initialize().then((value) {
+        _cameraPreviewModel.cameraController = _cameraController;
+        _cameraPreviewModel.startFaceDetection();
+      }).onError((error, stackTrace) => throw Future.error('Error $error'));
+    }
+
+    return cameras;
+  }
+
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: AppBar(title: Text(widget.appBarTitle)),
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(20.0),
+            padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
             child: Column(
               children: [
                 TextFormField(
@@ -89,39 +125,88 @@ class _CheckInOutState extends State<CheckInOutScreen> {
                     labelText: 'Current Location',
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 30),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Within Geofence Area'),
-                      Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.black, width: 0.5),
-                            color: _withinGpsRegion == null
-                                ? Colors.grey
-                                : (_withinGpsRegion!
-                                    ? Colors.green
-                                    : Colors.red)),
-                      )
-                    ],
-                  ),
-                ),
               ],
             ),
           ),
+          Center(
+            child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+                child: Container(
+                  width: MediaQuery.of(context).size.width * 0.5,
+                  height: 250,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.black, width: 0.6),
+                    shape: BoxShape.rectangle,
+                  ),
+                  child: FutureBuilder<List<CameraDescription>>(
+                      future: _cameraList,
+                      builder: (BuildContext context,
+                          AsyncSnapshot<List<CameraDescription>> snapshot) {
+                        if (snapshot.hasError) {
+                          return const Center(
+                            child: Text('Something went wrong'),
+                          );
+                        } else if (snapshot.hasData) {
+                          return Stack(fit: StackFit.expand, children: [
+                            CameraPreview(_cameraController),
+                            ChangeNotifierProvider.value(
+                              value: _cameraPreviewModel,
+                              builder: (context, _) {
+                                final model =
+                                    context.watch<CameraPreviewModel>();
+                                final controller = context
+                                    .watch<CameraPreviewModel>()
+                                    .cameraController;
+                                if (controller != null) {
+                                  return CustomPaint(
+                                    painter: FacePainter(
+                                        face: model.faceDetected,
+                                        imageSize: ImageUitls.getImageSize(
+                                            controller)),
+                                  );
+                                } else {
+                                  return Container();
+                                }
+                              },
+                            ),
+                            /*ChangeNotifierProvider.value(
+                              value:
+                              _cameraPreviewModel,
+                              builder: (context, _) {
+                                final value = context
+                                    .watch<CameraPreviewModel>()
+                                    .userFound;
+                                if (value == null) {
+
+                                  print('############### NO FACE DETECTED');
+
+                                } else if (!value) {
+                                  print('############### USER NOT FOUND');
+                                } else {
+                                  print('############### FACE DETECTED');
+                                }
+
+                                return SizedBox.shrink();
+                              },
+                            )*/
+                          ]);
+                        } else {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                      }),
+                )),
+          ),
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20.0),
+            padding: const EdgeInsets.fromLTRB(20, 5, 20, 5),
             child: Container(
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.black, width: 0.6),
                 shape: BoxShape.rectangle,
               ),
               child: SizedBox(
-                height: MediaQuery.of(context).size.height * 0.4,
+                height: MediaQuery.of(context).size.height * 0.28,
                 width: double.infinity,
                 child: _fetchingInitPos
                     ? const Center(
@@ -144,21 +229,39 @@ class _CheckInOutState extends State<CheckInOutScreen> {
               ),
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Text(
-              '** Long press on map to add Geofence area **',
-              style: TextStyle(color: Colors.red, fontSize: 16.0),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 5),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Within Geofence area'),
+                Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.black, width: 0.5),
+                      color: _withinGpsRegion == null
+                          ? Colors.grey
+                          : (_withinGpsRegion! ? Colors.green : Colors.red)),
+                )
+              ],
             ),
           ),
           const Padding(
-            padding: EdgeInsets.all(8.0),
+            padding: EdgeInsets.fromLTRB(20, 0, 0, 5),
             child: Text(
-              '** User round button to start/stop Geofencing **',
-              style: TextStyle(color: Colors.red, fontSize: 16.0),
+              '*Long press on map to add Geofence area.',
+              style: TextStyle(color: Colors.red, fontSize: 14.0),
             ),
           ),
-          const Spacer(),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 0, 0, 10),
+            child: Text(
+              '*User round button to start/stop Geofencing.',
+              style: TextStyle(color: Colors.red, fontSize: 14.0),
+            ),
+          ),
           SizedBox(
             width: double.infinity,
             child: Container(
@@ -167,7 +270,9 @@ class _CheckInOutState extends State<CheckInOutScreen> {
             ),
           ),
           Padding(
-              padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 40),
+            padding: const EdgeInsets.all(8.0),
+            child: Align(
+              alignment: Alignment.bottomCenter,
               child: SizedBox(
                 //   width: double.infinity,
                 child: ElevatedButton(
@@ -176,7 +281,9 @@ class _CheckInOutState extends State<CheckInOutScreen> {
                   },
                   child: const Text('Done'),
                 ),
-              ))
+              ),
+            ),
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -187,7 +294,6 @@ class _CheckInOutState extends State<CheckInOutScreen> {
             } else {
               stopMonitoring();
             }
-
           },
           elevation: 10.0,
           child: Text(
@@ -296,7 +402,6 @@ class _CheckInOutState extends State<CheckInOutScreen> {
         ));
       });
       return;
-
     }
 
     start = !start;
@@ -347,11 +452,33 @@ class _CheckInOutState extends State<CheckInOutScreen> {
   }
 
   void markAttendance() async {
+    CustomProgressDialog(context: context).show();
+
+    final prediction = await _cameraPreviewModel.predict(checkInOut: true);
+
+    if (prediction == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('No face detected!'),
+        backgroundColor: Colors.red,
+        duration: Duration(milliseconds: 1000),
+      ));
+      CustomProgressDialog(context: context).hide();
+      return;
+    } else if (!prediction) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('User record not found'),
+        duration: Duration(milliseconds: 1000),
+        backgroundColor: Colors.red,
+      ));
+      CustomProgressDialog(context: context).hide();
+      return;
+    }
+
     final res = await _datebaseHelper.upsertUserAttendance(
         UserAttendance(attendanceId: const Uuid().v6(), userId: user!.userId),
         currentLocation: _addressTextController.text);
 
-    setState(() {});
+    CustomProgressDialog(context: context).hide();
 
     if (res > 0) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -367,10 +494,12 @@ class _CheckInOutState extends State<CheckInOutScreen> {
         duration: const Duration(milliseconds: 1000),
       ));
     }
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _cameraPreviewModel.dispose();
     _geoFenceModel.stopGeofence();
     super.dispose();
   }
